@@ -30,7 +30,7 @@ async function fetchYouTubeMetadata(videoId) {
   const text = await res.text();
 
   // 1. Extract ytInitialPlayerResponse JSON
-  const match = text.match(/ytInitialPlayerResponse\s*=\s*({.+?});var\s/);
+  const match = text.match(/ytInitialPlayerResponse\s*=\s*({.+?});/);
   if (!match) throw new Error("ytInitialPlayerResponse not found");
  
   const data = JSON.parse(match[1]);
