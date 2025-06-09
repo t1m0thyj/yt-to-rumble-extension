@@ -58,7 +58,7 @@ function loadImageAsBlob(url) {
       }, "image/webp");
     };
     img.onerror = reject;
-    img.src = `https://corsproxy.io/${url}`;
+    img.src = `https://corsproxy.io/?url=${url}`;
   });
 }
 
