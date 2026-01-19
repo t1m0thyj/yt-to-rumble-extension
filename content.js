@@ -1,5 +1,16 @@
 const DEFAULT_CATEGORY = "Podcasts";
 
+// Look for video uploader and make it accept .mkv files
+window.addEventListener("load", () => {
+  const filedataInput = document.getElementById("Filedata");
+  if (filedataInput) {
+    const currentAccept = filedataInput.getAttribute("accept") || "";
+    if (!currentAccept.includes(".mkv")) {
+      filedataInput.setAttribute("accept", currentAccept + ",.mkv");
+    }
+  }
+});
+
 chrome.runtime.onMessage.addListener(async (msg) => {
   if (msg.type === "FETCH_CLIPBOARD") {
     try {
