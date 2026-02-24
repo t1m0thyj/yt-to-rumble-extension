@@ -4,7 +4,7 @@
   "version": "1.0",
   "description": "Fetch YouTube metadata to autofill Rumble uploader.",
   "permissions": ["contextMenus", "scripting", "activeTab", "clipboardRead"],
-  "host_permissions": ["https://www.youtube.com/*"],
+  "host_permissions": ["https://www.youtube.com/*", "https://i.ytimg.com/*"],
   "background": {
     "service_worker": "background.js"
   },

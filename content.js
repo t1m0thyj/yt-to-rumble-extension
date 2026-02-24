@@ -54,23 +54,16 @@ function getYouTubeVideoId(url) {
   return null;
 }
 
-function loadImageAsBlob(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous"; // still needed to avoid tainted canvas
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      canvas.getContext("2d").drawImage(img, 0, 0);
-      canvas.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error("Failed to convert image to blob"));
-      }, "image/webp");
-    };
-    img.onerror = reject;
-    img.src = `https://corsproxy.io/?url=${url}`;
-  });
+function dataUrlToBlob(dataUrl) {
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
 }
 
 window.addEventListener("message", async (event) => {
@@ -95,10 +88,10 @@ window.addEventListener("message", async (event) => {
   document.getElementById('category_primary').value = selectOption.dataset.value;
   document.querySelector('.select-search-input').value = selectOption.dataset.label;
 
-  // 4. Upload Thumbnail from URL
+  // 4. Upload Thumbnail from data URL
   const fileInput = document.querySelector("input[type='file'][accept='image/*']");
-  if (fileInput) {
-    const blob = await loadImageAsBlob(thumbnail);
+  if (fileInput && thumbnail) {
+    const blob = dataUrlToBlob(thumbnail);
     const file = new File([blob], "thumbnail.webp", { type: blob.type });
 
     const dataTransfer = new DataTransfer();

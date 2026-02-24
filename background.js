@@ -37,7 +37,26 @@ async function fetchYouTubeMetadata(videoId) {
  
   // 2. Extract metadata
   const { title, shortDescription } = data.videoDetails || {};
-  const thumbnail = `https://i.ytimg.com/vi_webp/${videoId}/maxresdefault.webp`;
+  
+  // 3. Fetch thumbnail and convert to data URL
+  const thumbnailUrl = `https://i.ytimg.com/vi_webp/${videoId}/maxresdefault.webp`;
+  const thumbnailDataUrl = await fetchImageAsDataUrl(thumbnailUrl);
 
-  return { title, description: shortDescription, thumbnail };
+  return { title, description: shortDescription, thumbnail: thumbnailDataUrl };
+}
+
+async function fetchImageAsDataUrl(url) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Failed to fetch thumbnail:', error);
+    return null;
+  }
 }
