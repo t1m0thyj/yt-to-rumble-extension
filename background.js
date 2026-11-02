@@ -36,13 +36,13 @@ async function fetchYouTubeMetadata(videoId) {
   const data = JSON.parse(match[1]);
  
   // 2. Extract metadata
-  const { title, shortDescription } = data.videoDetails || {};
+  const { title, shortDescription, keywords = [] } = data.videoDetails || {};
   
   // 3. Fetch thumbnail and convert to data URL
   const thumbnailUrl = `https://i.ytimg.com/vi_webp/${videoId}/maxresdefault.webp`;
   const thumbnailDataUrl = await fetchImageAsDataUrl(thumbnailUrl);
 
-  return { title, description: shortDescription, thumbnail: thumbnailDataUrl };
+  return { title, description: shortDescription, keywords, thumbnail: thumbnailDataUrl };
 }
 
 async function fetchImageAsDataUrl(url) {

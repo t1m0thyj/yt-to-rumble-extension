@@ -1,15 +1,4 @@
-const DEFAULT_CATEGORY = "Podcasts";
-
-// Look for video uploader and make it accept .mkv files
-window.addEventListener("load", () => {
-  const filedataInput = document.getElementById("Filedata");
-  if (filedataInput) {
-    const currentAccept = filedataInput.getAttribute("accept") || "";
-    if (!currentAccept.includes(".mkv")) {
-      filedataInput.setAttribute("accept", currentAccept + ",.mkv");
-    }
-  }
-});
+let thumbnailObserver;
 
 chrome.runtime.onMessage.addListener(async (msg) => {
   if (msg.type === "FETCH_CLIPBOARD") {
@@ -66,38 +55,72 @@ function dataUrlToBlob(dataUrl) {
   return new Blob([u8arr], { type: mime });
 }
 
-window.addEventListener("message", async (event) => {
-  if (event.source !== window || !event.data || event.data.type !== "YT_METADATA") return;
+function setInputValue(input, value) {
+  if (!input || typeof value !== "string") return;
 
-  const { title, description, thumbnail, category = DEFAULT_CATEGORY } = event.data.payload;
-  console.log("YT Title:", title);
-  console.log("Description:", description);
-  console.log("Thumbnail:", thumbnail);
-  console.log("Category:", category);
+  // Bypass React's per-element value tracker so its onChange handler sees the edit.
+  const prototype = input instanceof HTMLTextAreaElement
+    ? HTMLTextAreaElement.prototype
+    : HTMLInputElement.prototype;
+  Object.getOwnPropertyDescriptor(prototype, "value").set.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
 
-  // 1. Fill Title
-  const titleInput = document.querySelector("input[name='title']");
-  if (titleInput) titleInput.value = title;
+function uploadThumbnail(root, thumbnail) {
+  thumbnailObserver?.disconnect();
+  if (!thumbnail) return;
 
-  // 2. Fill Description
-  const descTextarea = document.querySelector("textarea[name='description']");
-  if (descTextarea) descTextarea.value = description;
+  const blob = dataUrlToBlob(thumbnail);
+  const file = new File([blob], "thumbnail.webp", { type: blob.type });
+  thumbnailObserver = new MutationObserver(tryUpload);
 
-  // 3. Set Category
-  const selectOption = document.querySelector(`.select-option[data-label='${category}']`);
-  document.getElementById('category_primary').value = selectOption.dataset.value;
-  document.querySelector('.select-search-input').value = selectOption.dataset.label;
+  function tryUpload() {
+    if (!root.isConnected) {
+      thumbnailObserver.disconnect();
+      return;
+    }
+    const input = root.querySelector('input[type="file"][accept="image/*"]');
+    const button = root.querySelector('[data-sentry-component="CIVideoUploadCustomThumbnailButton"] button');
+    // Studio cannot accept a custom thumbnail until the video has finished uploading.
+    if (!input || !button || button.disabled) return;
 
-  // 4. Upload Thumbnail from data URL
-  const fileInput = document.querySelector("input[type='file'][accept='image/*']");
-  if (fileInput && thumbnail) {
-    const blob = dataUrlToBlob(thumbnail);
-    const file = new File([blob], "thumbnail.webp", { type: blob.type });
-
+    thumbnailObserver.disconnect();
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
-    fileInput.files = dataTransfer.files;
-
-    fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+    input.files = dataTransfer.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
   }
+
+  thumbnailObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["disabled"]
+  });
+  tryUpload();
+}
+
+window.addEventListener("message", (event) => {
+  if (event.source !== window || !event.data || event.data.type !== "YT_METADATA") return;
+
+  const { title, description, keywords, thumbnail } = event.data.payload;
+  console.log("YT Title:", title);
+  console.log("Description:", description);
+  console.log("Keywords:", keywords);
+  console.log("Thumbnail:", thumbnail.slice(0, 100) + "...");
+
+  const details = document.querySelector('[data-sentry-component="CIVideoUploadModalStepDetails"]');
+  if (!details) {
+    alert("Open the Rumble upload details step before pasting YouTube metadata.");
+    return;
+  }
+
+  setInputValue(details.querySelector('input[placeholder="Title (required)"]'), title);
+  setInputValue(details.querySelector('textarea[placeholder="Description (required)"]'), description);
+  if (Array.isArray(keywords) && keywords.length) {
+    setInputValue(details.querySelector('input[placeholder="Add tags"]'), keywords.join(", ") + ",");
+  }
+
+  uploadThumbnail(details.closest('[role="dialog"]'), thumbnail);
 });
